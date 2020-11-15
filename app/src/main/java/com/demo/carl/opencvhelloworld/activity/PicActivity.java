@@ -38,8 +38,8 @@ public class PicActivity extends AppCompatActivity {
         ivTpl.setImageBitmap(tpl);
         log("tpl.getWidth():"+tpl.getWidth());
         log("tpl.getHeight():"+tpl.getHeight());
-        log("bitmap.getWidth():"+org_bitmap.getWidth());
-        log("bitmap.getHeight():"+org_bitmap.getHeight());
+        log("mBitmap.getWidth():"+org_bitmap.getWidth());
+        log("mBitmap.getHeight():"+org_bitmap.getHeight());
 //        Bitmap tpl2 = ((BitmapDrawable)getResources().getDrawable( R.drawable.tpl00)).getBitmap();
 ////        log("tpl2.getWidth():"+tpl2.getWidth());
 ////        log("tpl2.getHeight():"+tpl2.getHeight());

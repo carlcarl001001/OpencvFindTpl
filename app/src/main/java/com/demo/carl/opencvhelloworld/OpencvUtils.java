@@ -48,7 +48,7 @@ public class OpencvUtils {
         RectF box = templateMatch(tpl, bitmap);
         Bitmap cut = Bitmap.createBitmap(bitmap, (int) box.left, (int) box.top, tpl.getWidth(), tpl.getHeight());
         double score = OpencvUtils.comPareHist(cut,tpl);
-        if (score>0.25){
+        if (score>0.20){
             return new Result(box,score);
         }else {
             return null;

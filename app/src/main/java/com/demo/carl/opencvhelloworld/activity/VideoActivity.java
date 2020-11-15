@@ -8,6 +8,8 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
@@ -25,6 +27,7 @@ import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Point;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.view.PreviewView;
@@ -42,6 +45,7 @@ public class VideoActivity extends AppCompatActivity implements Camera_X.UpDataU
     private ImageView imageView;
     private ImageView ivCut;
     private TextView tvScore;
+    private Bitmap mOrgBitmap;
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -113,41 +117,19 @@ public class VideoActivity extends AppCompatActivity implements Camera_X.UpDataU
     private boolean isMatching = false;
     @Override
     public void readBitmap(Bitmap bitmap) {
-
-        runOnUiThread(new Runnable() {
-            @SuppressLint("SetTextI18n")
-            @Override
-            public void run() {
-                if (!isMatching){
-                    isMatching = true;
-                    //RectF box= OpencvUtils.templateMatch(tpl_scaled,bitmap);
-
-                    //overlap.drawBox(box);
-                    //OpencvUtils.comPareHist(cut,tpl_scaled);
-                    //imageView.setImageBitmap(bitmap);
-                    RectF winBox=null;
-                    Result r= OpencvUtils.templateMatch2(tpl_scaled,bitmap);
-                    if (r!=null){
-                        Bitmap cut = Bitmap.createBitmap(bitmap, (int) r.box.left, (int) r.box.top, tpl_scaled.getWidth(), tpl_scaled.getHeight());
-                        ivCut.setImageBitmap(cut);
-                        tvScore.setText("score:"+r.score);
-                        winBox=cameraBox2WinBox(pvCamera.getWidth(),pvCamera.getHeight(),r.box);
-
-                    }else {
-                        Bitmap cut = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher_background);
-                        ivCut.setImageBitmap(cut);
-                        tvScore.setText("null");
-                    }
-
-                    overlap.drawBox(winBox);
-
-                    isMatching = false;
-                }
-
-            }
-        });
+        mOrgBitmap = bitmap;
+        new Thread(new MatchRunnable(bitmap)).start();
+//        runOnUiThread(new Runnable() {
+//            @SuppressLint("SetTextI18n")
+//            @Override
+//            public void run() {
+//
+//
+//            }
+//        });
 
     }
+
     private void initOpenCV() {
         Log.d(TAG, "into resume");
         if (!OpenCVLoader.initDebug()) {
@@ -202,6 +184,56 @@ public class VideoActivity extends AppCompatActivity implements Camera_X.UpDataU
         return new RectF(win_left,win_top,win_right,win_bottom);
     }
 
+    private class MatchRunnable implements Runnable{
+        Bitmap mBitmap;
+
+        public MatchRunnable(Bitmap bitmap) {
+            this.mBitmap = bitmap;
+        }
+
+        @Override
+        public void run() {
+            if (!isMatching){
+                isMatching = true;
+                //RectF box= OpencvUtils.templateMatch(tpl_scaled,mBitmap);
+
+                //overlap.drawBox(box);
+                //OpencvUtils.comPareHist(cut,tpl_scaled);
+                //imageView.setImageBitmap(mBitmap);
+                long startTime = System.nanoTime();
+                Result r= OpencvUtils.templateMatch2(tpl_scaled, mBitmap);
+                long consumingTime = System.nanoTime() - startTime;
+                log("consumingTime:"+consumingTime/1000000+"ms");
+                Message msg = new Message();
+                msg.obj = r;
+                myHandle.sendMessage(msg);
+
+
+                isMatching = false;
+            }
+        }
+    }
+    private Handler myHandle = new Handler(new Handler.Callback() {
+        @Override
+        public boolean handleMessage(@NonNull Message msg) {
+            Result r = (Result) msg.obj;
+            RectF winBox=null;
+            if (r!=null){
+                Bitmap cut = Bitmap.createBitmap(mOrgBitmap, (int) r.box.left, (int) r.box.top, tpl_scaled.getWidth(), tpl_scaled.getHeight());
+                ivCut.setImageBitmap(cut);
+                tvScore.setText("score:"+r.score);
+                winBox=cameraBox2WinBox(pvCamera.getWidth(),pvCamera.getHeight(),r.box);
+
+            }else {
+                Bitmap cut = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher_background);
+                ivCut.setImageBitmap(cut);
+                tvScore.setText("null");
+            }
+
+            overlap.drawBox(winBox);
+            return false;
+        }
+    });
     private void log(String str){
         Log.i("carl",str);
     }
